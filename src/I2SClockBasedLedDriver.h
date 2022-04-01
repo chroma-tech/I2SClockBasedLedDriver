@@ -21,7 +21,7 @@
 #include "freertos/semphr.h"
 #include <stdio.h>
 #include <rom/ets_sys.h>
-#include "esp32-hal-log.h"
+#include <math.h>
 #include "ledtypes.h"
 #ifndef NUMSTRIPS
 #define NUMSTRIPS 16
