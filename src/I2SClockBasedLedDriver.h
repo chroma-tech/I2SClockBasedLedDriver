@@ -763,15 +763,15 @@ Show pixels classiques
     void i2sReset_DMA()
     {
 
-        (&I2S0)->lc_conf.out_rst = 1;
-        (&I2S0)->lc_conf.out_rst = 0;
+        i2s->lc_conf.out_rst = 1;
+        i2s->lc_conf.out_rst = 0;
     }
 
     void i2sReset_FIFO()
     {
 
-        (&I2S0)->conf.tx_fifo_reset = 1;
-        (&I2S0)->conf.tx_fifo_reset = 0;
+        i2s->conf.tx_fifo_reset = 1;
+        i2s->conf.tx_fifo_reset = 0;
     }
 
     void IRAM_ATTR i2sStop()
@@ -783,7 +783,7 @@ Show pixels classiques
         esp_intr_disable(_gI2SClocklessDriver_intr_handle);
         i2sReset();
 
-        (&I2S0)->conf.tx_start = 0;
+        i2s->conf.tx_start = 0;
         isDisplaying = false;
         /*
          We have finished to display the strips
@@ -851,28 +851,28 @@ Show pixels classiques
         framesync = false;
         counti = 0;
 
-        (&I2S0)->lc_conf.val = I2S_OUT_DATA_BURST_EN | I2S_OUTDSCR_BURST_EN | I2S_OUT_DATA_BURST_EN;
+        i2s->lc_conf.val = I2S_OUT_DATA_BURST_EN | I2S_OUTDSCR_BURST_EN | I2S_OUT_DATA_BURST_EN;
 
-        (&I2S0)->out_link.addr = (uint32_t) & (startBuffer->descriptor);
+        i2s->out_link.addr = (uint32_t) & (startBuffer->descriptor);
 
-        (&I2S0)->out_link.start = 1;
+        i2s->out_link.start = 1;
 
-        (&I2S0)->int_clr.val = (&I2S0)->int_raw.val;
+        i2s->int_clr.val = i2s->int_raw.val;
 
-        (&I2S0)->int_clr.val = (&I2S0)->int_raw.val;
-        (&I2S0)->int_ena.val = 0;
+        i2s->int_clr.val = i2s->int_raw.val;
+        i2s->int_ena.val = 0;
 
         /*
          If we do not use the regular showpixels, then no need to activate the interupt at the end of each pixels
          */
         //if(transpose)
-        (&I2S0)->int_ena.out_eof = 1;
+        i2s->int_ena.out_eof = 1;
 
-        (&I2S0)->int_ena.out_total_eof = 1;
+        i2s->int_ena.out_total_eof = 1;
         esp_intr_enable(_gI2SClocklessDriver_intr_handle);
 
         //We start the I2S
-        (&I2S0)->conf.tx_start = 1;
+        i2s->conf.tx_start = 1;
 
         //Set the mode to indicate that we've started
         isDisplaying = true;
@@ -881,11 +881,11 @@ Show pixels classiques
     void IRAM_ATTR i2sReset()
     {
         const unsigned long lc_conf_reset_flags = I2S_IN_RST_M | I2S_OUT_RST_M | I2S_AHBM_RST_M | I2S_AHBM_FIFO_RST_M;
-        (&I2S0)->lc_conf.val |= lc_conf_reset_flags;
-        (&I2S0)->lc_conf.val &= ~lc_conf_reset_flags;
+        i2s->lc_conf.val |= lc_conf_reset_flags;
+        i2s->lc_conf.val &= ~lc_conf_reset_flags;
         const uint32_t conf_reset_flags = I2S_RX_RESET_M | I2S_RX_FIFO_RESET_M | I2S_TX_RESET_M | I2S_TX_FIFO_RESET_M;
-        (&I2S0)->conf.val |= conf_reset_flags;
-        (&I2S0)->conf.val &= ~conf_reset_flags;
+        i2s->conf.val |= conf_reset_flags;
+        i2s->conf.val &= ~conf_reset_flags;
     }
 
     // static void IRAM_ATTR interruptHandler(void *arg);
@@ -1012,7 +1012,7 @@ static void IRAM_ATTR transpose16x1_noinline2(unsigned char *A, uint8_t *B)
     *((uint16_t *)(B + 12)) = (uint16_t)((y & 0xff) | ((y1 & 0xff) << 8));
 }
 
-static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, uint8_t *mapg, uint8_t *mapr, uint8_t *mapb, uint8_t *mapw, int nbcomponents, int pg, int pr, int pb,uint16_t brightness)
+static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, uint8_t *__mapg, uint8_t *__mapr, uint8_t *__mapb, uint8_t *__mapw, int nbcomponents, int pg, int pr, int pb,uint16_t brightness)
 {
     Lines secondPixel[NUMBER_OF_BLOCK];
     //uint8_t *poli=ledt+ledtodisp*NUMBER_OF_BLOCK;
@@ -1131,7 +1131,7 @@ static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num
 #endif
 #if NUMBER_OF_BLOCK >=2
     #if DATA_SIZE==1
-        secondPixel[BA1].bytes[i]=mapr[*(poli+1)];
+        secondPixel[BA1].bytes[i]= *(poli+1); // mapr[*(poli+1)];
     #else
             secondPixel[BA1].bytes[i]=*(poli+1);
      #endif
@@ -1139,7 +1139,7 @@ static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num
 #endif
 #if NUMBER_OF_BLOCK >=3
     #if DATA_SIZE == 1
-            secondPixel[BA2].bytes[i]=mapg[*(poli+2)];
+            secondPixel[BA2].bytes[i]= *(poli+2); //mapg[*(poli+2)];
     #else
              f=(*((uint16_t *)(poli+2)))/brightness;
              p1=f>>8;
@@ -1149,7 +1149,7 @@ static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num
 #endif
 #if NUMBER_OF_BLOCK >=4
     #if DATA_SIZE == 1
-        secondPixel[BA3].bytes[i]=mapb[*(poli+3)];
+        secondPixel[BA3].bytes[i]= *(poli+3); //mapb[*(poli+3)];
     #else
          secondPixel[BA3].bytes[i]=p2;
     #endif
