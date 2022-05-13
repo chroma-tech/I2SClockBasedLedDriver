@@ -12,6 +12,7 @@ namespace I2SClockless
 
     class I2SClocklessLedDriver
     {
+        bool _has_i2s_init = false;
 
         struct I2SClocklessLedDriverDMABuffer
         {
@@ -192,10 +193,12 @@ namespace I2SClockless
 
         void initDMABuffers()
         {
-            DMABuffersTampon[0] = allocateDMABuffer(nb_components * 8 * 2 * 3); // the buffers for the
-            DMABuffersTampon[1] = allocateDMABuffer(nb_components * 8 * 2 * 3);
-            DMABuffersTampon[2] = allocateDMABuffer(nb_components * 8 * 2 * 3);
-            DMABuffersTampon[3] = allocateDMABuffer(nb_components * 8 * 2 * 3 * 4);
+            // was nb_components (change so never have to reallocate)
+            const int components = 4;
+            DMABuffersTampon[0] = allocateDMABuffer(components * 8 * 2 * 3); // the buffers for the
+            DMABuffersTampon[1] = allocateDMABuffer(components * 8 * 2 * 3);
+            DMABuffersTampon[2] = allocateDMABuffer(components * 8 * 2 * 3);
+            DMABuffersTampon[3] = allocateDMABuffer(components * 8 * 2 * 3 * 4);
 
             putdefaultones((uint16_t *)DMABuffersTampon[0]->buffer);
             putdefaultones((uint16_t *)DMABuffersTampon[1]->buffer);
@@ -615,8 +618,12 @@ namespace I2SClockless
             this->num_strips = num_strips;
             this->dmaBufferCount = dmaBufferCount;
             setPins(Pinsq);
-            i2sInit();
-            initDMABuffers();
+            if (!_has_i2s_init)
+            {
+                i2sInit();
+                initDMABuffers();
+                _has_i2s_init = true;
+            }
         }
 
         // private:
@@ -912,7 +919,7 @@ namespace I2SClockless
         *((uint16_t *)(B + 23)) = (uint16_t)((y & 0xff) | ((y1 & 0xff) << 8));
     }
 
-    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint16_t *buffer, int ledtodisp, uint8_t *mapg, uint8_t *mapr, uint8_t *mapb, uint8_t *mapw, int nbcomponents, int pg, int pr, int pb)
+    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint16_t *buffer, int ledtodisp, uint8_t *_mapg, uint8_t *_mapr, uint8_t *_mapb, uint8_t *_mapw, int nbcomponents, int pg, int pr, int pb)
     {
         Lines secondPixel[nbcomponents];
 
@@ -1016,11 +1023,11 @@ namespace I2SClockless
             _b = *(poli + 2);
 #endif
 
-            secondPixel[pg].bytes[i] = mapg[_g];
-            secondPixel[pr].bytes[i] = mapr[_r];
-            secondPixel[pb].bytes[i] = mapb[_b];
+            secondPixel[pg].bytes[i] = _g;
+            secondPixel[pr].bytes[i] = _r;
+            secondPixel[pb].bytes[i] = _b;
             if (nbcomponents > 3)
-                secondPixel[3].bytes[i] = mapw[*(poli + 3)];
+                secondPixel[3].bytes[i] = *(poli + 3);
 
             poli += led_per_strip * nbcomponents;
 #if HARDWARESPRITES == 1

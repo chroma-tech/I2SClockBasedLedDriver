@@ -6,10 +6,11 @@ namespace I2SClockBased
     static const char *TAG = "I2SClockBasedLedDriver";
     static void IRAM_ATTR _I2SClockBasedLedDriverinterruptHandler(void *arg);
     static void IRAM_ATTR transpose16x1_noinline2(unsigned char *A, uint8_t *B);
-    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, int nbcomponents, int pg, int pr, int pb);
+    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, int pg, int pr, int pb);
 
     class I2SClockBasedLedDriver
     {
+        bool _has_i2s_init = false;
 
         struct I2SClockBasedLedDriverDMABuffer
         {
@@ -37,7 +38,6 @@ namespace I2SClockBased
         OffsetDisplay _offsetDisplay, _defaultOffsetDisplay;
         // volatile int oo=0;
         uint8_t *leds;
-        int startleds;
         int linewidth;
         int dmaBufferCount = 2; // we use two buffers
         volatile bool transpose = false;
@@ -47,7 +47,6 @@ namespace I2SClockBased
         // int clock_pin;
         int p_r, p_g, p_b;
         int i2s_base_pin_index;
-        int nb_components;
         /*
          This flag is used when using the NO_WAIT modeÒÒ
          */
@@ -159,9 +158,6 @@ namespace I2SClockBased
             DMABuffersTampon[2] = allocateDMABuffer(START_FRAME_SIZE * 8 * 16 * 2 * 2);
             DMABuffersTampon[3] = allocateDMABuffer((NUM_LEDS_PER_STRIP * 2));
             memset(DMABuffersTampon[3]->buffer, 255, (NUM_LEDS_PER_STRIP * 2));
-
-            // putdefaultones((uint16_t *)DMABuffersTampon[0]->buffer);
-            // putdefaultones((uint16_t *)DMABuffersTampon[1]->buffer);
 
 #ifdef FULL_DMA_BUFFER
             /*
@@ -305,80 +301,6 @@ namespace I2SClockBased
             }
         }
 
-        void setPixelinBuffer(uint32_t pos, uint8_t red, uint8_t green, uint8_t blue, uint8_t white)
-        {
-            uint32_t stripNumber = pos / num_led_per_strip;
-            uint32_t posOnStrip = pos % num_led_per_strip;
-
-            uint16_t mask = ~(1 << stripNumber);
-
-            uint8_t colors[3];
-            colors[p_g] = __green_map[green];
-            colors[p_r] = __red_map[red];
-            colors[p_b] = __blue_map[blue];
-            uint16_t *B = (uint16_t *)DMABuffersTransposed[posOnStrip + 1]->buffer;
-            // printf("nb c:%d\n",nb_components);
-            uint8_t y = colors[0];
-            *((uint16_t *)(B)) = (*((uint16_t *)(B)) & mask) | ((uint16_t)((y & 128) >> 7) << stripNumber);
-            *((uint16_t *)(B + 5)) = (*((uint16_t *)(B + 5)) & mask) | ((uint16_t)((y & 64) >> 6) << stripNumber);
-            *((uint16_t *)(B + 6)) = (*((uint16_t *)(B + 6)) & mask) | ((uint16_t)((y & 32) >> 5) << stripNumber);
-            *((uint16_t *)(B + 11)) = (*((uint16_t *)(B + 11)) & mask) | ((uint16_t)((y & 16) >> 4) << stripNumber);
-            *((uint16_t *)(B + 12)) = (*((uint16_t *)(B + 12)) & mask) | ((uint16_t)((y & 8) >> 3) << stripNumber);
-            *((uint16_t *)(B + 17)) = (*((uint16_t *)(B + 17)) & mask) | ((uint16_t)((y & 4) >> 2) << stripNumber);
-            *((uint16_t *)(B + 18)) = (*((uint16_t *)(B + 18)) & mask) | ((uint16_t)((y & 2) >> 1) << stripNumber);
-            *((uint16_t *)(B + 23)) = (*((uint16_t *)(B + 23)) & mask) | ((uint16_t)(y & 1) << stripNumber);
-
-            B += 3 * 8;
-            y = colors[1];
-            *((uint16_t *)(B)) = (*((uint16_t *)(B)) & mask) | ((uint16_t)((y & 128) >> 7) << stripNumber);
-            *((uint16_t *)(B + 5)) = (*((uint16_t *)(B + 5)) & mask) | ((uint16_t)((y & 64) >> 6) << stripNumber);
-            *((uint16_t *)(B + 6)) = (*((uint16_t *)(B + 6)) & mask) | ((uint16_t)((y & 32) >> 5) << stripNumber);
-            *((uint16_t *)(B + 11)) = (*((uint16_t *)(B + 11)) & mask) | ((uint16_t)((y & 16) >> 4) << stripNumber);
-            *((uint16_t *)(B + 12)) = (*((uint16_t *)(B + 12)) & mask) | ((uint16_t)((y & 8) >> 3) << stripNumber);
-            *((uint16_t *)(B + 17)) = (*((uint16_t *)(B + 17)) & mask) | ((uint16_t)((y & 4) >> 2) << stripNumber);
-            *((uint16_t *)(B + 18)) = (*((uint16_t *)(B + 18)) & mask) | ((uint16_t)((y & 2) >> 1) << stripNumber);
-            *((uint16_t *)(B + 23)) = (*((uint16_t *)(B + 23)) & mask) | ((uint16_t)(y & 1) << stripNumber);
-
-            B += 3 * 8;
-            y = colors[2];
-            *((uint16_t *)(B)) = (*((uint16_t *)(B)) & mask) | ((uint16_t)((y & 128) >> 7) << stripNumber);
-            *((uint16_t *)(B + 5)) = (*((uint16_t *)(B + 5)) & mask) | ((uint16_t)((y & 64) >> 6) << stripNumber);
-            *((uint16_t *)(B + 6)) = (*((uint16_t *)(B + 6)) & mask) | ((uint16_t)((y & 32) >> 5) << stripNumber);
-            *((uint16_t *)(B + 11)) = (*((uint16_t *)(B + 11)) & mask) | ((uint16_t)((y & 16) >> 4) << stripNumber);
-            *((uint16_t *)(B + 12)) = (*((uint16_t *)(B + 12)) & mask) | ((uint16_t)((y & 8) >> 3) << stripNumber);
-            *((uint16_t *)(B + 17)) = (*((uint16_t *)(B + 17)) & mask) | ((uint16_t)((y & 4) >> 2) << stripNumber);
-            *((uint16_t *)(B + 18)) = (*((uint16_t *)(B + 18)) & mask) | ((uint16_t)((y & 2) >> 1) << stripNumber);
-            *((uint16_t *)(B + 23)) = (*((uint16_t *)(B + 23)) & mask) | ((uint16_t)(y & 1) << stripNumber);
-            if (nb_components > 3)
-            {
-                B += 3 * 8;
-                y = __white_map[white];
-                *((uint16_t *)(B)) = (*((uint16_t *)(B)) & mask) | ((uint16_t)((y & 128) >> 7) << stripNumber);
-                *((uint16_t *)(B + 5)) = (*((uint16_t *)(B + 5)) & mask) | ((uint16_t)((y & 64) >> 6) << stripNumber);
-                *((uint16_t *)(B + 6)) = (*((uint16_t *)(B + 6)) & mask) | ((uint16_t)((y & 32) >> 5) << stripNumber);
-                *((uint16_t *)(B + 11)) = (*((uint16_t *)(B + 11)) & mask) | ((uint16_t)((y & 16) >> 4) << stripNumber);
-                *((uint16_t *)(B + 12)) = (*((uint16_t *)(B + 12)) & mask) | ((uint16_t)((y & 8) >> 3) << stripNumber);
-                *((uint16_t *)(B + 17)) = (*((uint16_t *)(B + 17)) & mask) | ((uint16_t)((y & 4) >> 2) << stripNumber);
-                *((uint16_t *)(B + 18)) = (*((uint16_t *)(B + 18)) & mask) | ((uint16_t)((y & 2) >> 1) << stripNumber);
-                *((uint16_t *)(B + 23)) = (*((uint16_t *)(B + 23)) & mask) | ((uint16_t)(y & 1) << stripNumber);
-            }
-        }
-
-        void setPixelinBuffer(uint32_t pos, uint8_t red, uint8_t green, uint8_t blue)
-        {
-            uint8_t W = 0;
-            if (nb_components > 3)
-            {
-                W = MIN(red, green);
-                W = MIN(W, blue);
-                red = red - W;
-                green = green - W;
-                blue = blue - W;
-            }
-
-            setPixelinBuffer(pos, red, green, blue, W);
-        }
-
         void initled(int *Pinsq, int num_strips, int num_led_per_strip, colorarrangment cArr)
         {
             initled(NULL, Pinsq, num_strips, num_led_per_strip, cArr);
@@ -388,81 +310,6 @@ namespace I2SClockBased
             xSemaphoreTake(I2SClockBasedLedDriver_semSync, portMAX_DELAY);
         }
 #endif
-        void setPixel(uint32_t pos, uint8_t red, uint8_t green, uint8_t blue, uint8_t white)
-        {
-            uint8_t *offset = leds + (pos << 2); // faster than doing * 4
-            *(offset) = red;
-            *(++offset) = green;
-            *(++offset) = blue;
-            *(++offset) = white;
-        }
-
-        void setPixel(uint32_t pos, uint8_t red, uint8_t green, uint8_t blue)
-        {
-
-            if (nb_components == 3)
-            {
-                uint8_t *offset = leds + (pos << 1) + pos;
-                *(offset) = red;
-                *(++offset) = green;
-                *(++offset) = blue;
-            }
-            else
-            {
-                /*
-                    Code to transform RBG into RGBW thanks to @Jonathanese https://github.com/Jonathanese/NodeMCUPoleDriver/blob/master/LED_Framework.cpp
-                */
-                uint8_t W = MIN(red, green);
-                W = MIN(W, blue);
-                red = red - W;
-                green = green - W;
-                blue = blue - W;
-                setPixel(pos, red, green, blue, W);
-            }
-        }
-
-        /* hardware scroll
-
-    */
-
-        OffsetDisplay getDefaultOffset()
-        {
-            return _defaultOffsetDisplay;
-        }
-
-        void showPixels(uint8_t *new_leds, OffsetDisplay offdisp)
-        {
-            _offsetDisplay = offdisp;
-            showPixels(new_leds);
-            _offsetDisplay = _defaultOffsetDisplay;
-        }
-
-        void showPixels(OffsetDisplay offdisp)
-        {
-            _offsetDisplay = offdisp;
-            showPixels();
-            _offsetDisplay = _defaultOffsetDisplay;
-        }
-
-        /*
-    Show pixel circular
-    */
-        /*
-        void showPixels(uint8_t *new_leds)
-        {
-             _offsetDisplay=offdisp
-            showPixels(new_leds);
-            startleds=0;
-        }*/
-
-        /*
-        void showPixels(int offsett)
-        {
-            startleds=offsett;
-            showPixels();
-            startleds=0;
-        }
-        */
 
         /*
     Show pixels classiques
@@ -483,13 +330,6 @@ namespace I2SClockBased
                 return;
             }
 
-#if HARDWARESPRITES == 1
-            memset(target, 0, num_led_per_strip * num_strips * 2);
-            for (int i = 0; i < 8; i++)
-            {
-                sprites[i].reorder(_offsetDisplay.panel_width, _offsetDisplay.panel_height);
-            }
-#endif
             if (leds == NULL)
             {
                 ESP_LOGE(TAG, "no leds buffer defined");
@@ -502,7 +342,7 @@ namespace I2SClockBased
             DMABuffersTampon[2]->descriptor.qe.stqe_next = &(DMABuffersTampon[0]->descriptor);
             DMABuffersTampon[3]->descriptor.qe.stqe_next = 0;
             dmaBufferActive = 0;
-            loadAndTranspose(leds, num_led_per_strip, num_strips, _offsetDisplay, DMABuffersTampon[0]->buffer, ledToDisplay, nb_components, p_g, p_r, p_b);
+            loadAndTranspose(leds, num_led_per_strip, num_strips, _offsetDisplay, DMABuffersTampon[0]->buffer, ledToDisplay, p_g, p_r, p_b);
 
             dmaBufferActive = 1;
             i2sStart(DMABuffersTampon[2]);
@@ -511,31 +351,8 @@ namespace I2SClockBased
             xSemaphoreTake(I2SClockBasedLedDriver_sem, portMAX_DELAY);
         }
 
-        void setIndvBrigtness(Pixel *ledt, IndvBrightness b)
-        {
-            for (int i = 0; i < NUM_LEDS_PER_STRIP * NUMSTRIPS; i++)
-            {
-                ledt[i] = b;
-            }
-        }
-
-        void setIndvBrigtness(IndvBrightness b)
-        {
-            Pixel *ledt;
-            ledt = (Pixel *)leds;
-            for (int i = 0; i < NUM_LEDS_PER_STRIP * NUMSTRIPS; i++)
-            {
-                ledt[i] = b;
-            }
-        }
-
         void initled(uint8_t *leds, int *Pinsq, int clock_pin, int num_strips, int num_led_per_strip, int clockMHz = 4)
         {
-            startleds = 0;
-#if HARDWARESPRITES == 1
-            // Serial.println(NUM_LEDS_PER_STRIP * NBIS2SERIALPINS * 8);
-            target = (uint16_t *)malloc(num_led_per_strip * num_strips * 2 + 2);
-#endif
             dmaBufferCount = 2;
             this->leds = leds;
             this->num_led_per_strip = num_led_per_strip;
@@ -548,9 +365,12 @@ namespace I2SClockBased
             this->num_strips = num_strips;
             this->dmaBufferCount = dmaBufferCount;
             setPins(Pinsq, clock_pin);
-            i2sInit(clockMHz);
-            initDMABuffers();
-            // setIndvBrigtness(31);
+            if (!_has_i2s_init)
+            {
+                i2sInit(clockMHz);
+                initDMABuffers();
+                _has_i2s_init = true;
+            }
         }
 
         // private:
@@ -624,41 +444,6 @@ namespace I2SClockBased
              */
 
             // xSemaphoreGive(I2SClockBasedLedDriver_semDisp);
-        }
-
-        void putdefaultones(uint16_t *buffer)
-        {
-            /*order to push the data to the pins
-             0:D7
-             1:1
-             2:1
-             3:0
-             4:0
-             5:D6
-             6:D5
-             7:1
-             8:1
-             9:0
-             10:0
-             11:D4
-             12:D3
-             13:1
-             14:1
-             15:0
-             16:0
-             17:D2
-             18:D1
-             19:1
-             20:1
-             21:0
-             22:0
-             23:D0
-             */
-            for (int i = 0; i < nb_components * 8 / 2; i++)
-            {
-                buffer[i * 6 + 1] = 0xffff;
-                buffer[i * 6 + 2] = 0xffff;
-            }
         }
 
         /*
@@ -743,7 +528,7 @@ namespace I2SClockBased
                 cont->ledToDisplay++;
                 if (cont->ledToDisplay < NUM_LEDS_PER_STRIP)
                 {
-                    loadAndTranspose(cont->leds, cont->num_led_per_strip, cont->num_strips, cont->_offsetDisplay, cont->DMABuffersTampon[cont->dmaBufferActive]->buffer, cont->ledToDisplay, cont->nb_components, cont->p_g, cont->p_r, cont->p_b);
+                    loadAndTranspose(cont->leds, cont->num_led_per_strip, cont->num_strips, cont->_offsetDisplay, cont->DMABuffersTampon[cont->dmaBufferActive]->buffer, cont->ledToDisplay, cont->p_g, cont->p_r, cont->p_b);
                     if (cont->ledToDisplay == cont->num_led_per_strip - 4) // here it's not -1 because it takes time top have the change into account and it reread the buufer
                     {
                         cont->DMABuffersTampon[cont->dmaBufferActive]->descriptor.qe.stqe_next = &(cont->DMABuffersTampon[3]->descriptor);
@@ -848,7 +633,7 @@ namespace I2SClockBased
         *((uint16_t *)(B + 12)) = (uint16_t)((y & 0xff) | ((y1 & 0xff) << 8));
     }
 
-    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, int nbcomponents, int pg, int pr, int pb)
+    static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, int pg, int pr, int pb)
     {
         Lines secondPixel[NUMBER_OF_BLOCK];
         // uint8_t *poli=ledt+ledtodisp*NUMBER_OF_BLOCK;
@@ -863,52 +648,9 @@ namespace I2SClockBased
         x = ledtodisp % offdisp.panel_width;
         Y = y;
         X = x;
-#if SNAKEPATTERN == 1
 
-        // move in y
-        if (MOD(offdisp.offsety + 2 * y, offdisp.panel_height) % 2 == 0)
-        {
-            y = MOD(offdisp.offsety + y, offdisp.panel_height);
-        }
-        else
-        {
-            y = MOD(offdisp.offsety + y, offdisp.panel_height);
-            x = offdisp.panel_width - x - 1;
-        }
-
-        // move in x
-        if (y % 2 == 0)
-        {
-            // x=ledtodisp%offdisp.panel_width;
-            //  off=((x+startleds)%line_width)+y*line_width;
-            offi = MOD(x + offdisp.offsetx, offdisp.panel_width) + y * offdisp.panel_width;
-#if ALTERNATEPATTERN == 1
-            offp = MOD(x - offdisp.offsetx, offdisp.panel_width) + y * offdisp.panel_width;
-#else
-            offp = offi;
-#endif
-        }
-        else
-        {
-            // x=ledtodisp%offdisp.panel_width;
-            // off=(line_width-x-startleds+1)%line_width+y*line_width;
-            offi = MOD(x - offdisp.offsetx, offdisp.panel_width) + y * offdisp.panel_width;
-#if ALTERNATEPATTERN == 1
-            offp = MOD(x + offdisp.offsetx, offdisp.panel_width) + y * offdisp.panel_width;
-#else
-            offp = offi;
-#endif
-        }
-
-#else
-        // x = ledtodisp % offdisp.panel_width;
         offi = ((x + offdisp.offsetx) % offdisp.panel_width) + y * offdisp.panel_width;
-#if ALTERNATEPATTERN == 1
-        offp = MOD(x - offdisp.offsetx, offdisp.panel_width) + y * offdisp.panel_width;
-#else
         offp = offi;
-#endif
-#endif
 
         // uint8_t *poli = ledt + ((ledtodisp+startleds)%led_per_strip) * nbcomponents;
         offi = offi * NUMBER_OF_BLOCK;
@@ -932,35 +674,10 @@ namespace I2SClockBased
                 }
             }
 
-#if HARDWARESPRITES == 1
-            // res re=RE(offsetled);
-            if (target[offsetled] == 0)
-            {
-                _g = *(poli + 1);
-                _r = *(poli);
-                _b = *(poli + 2);
-            }
-            else
-            {
-                _g = _spritesleds[target[offsetled] - 1 + 1];
-                _r = _spritesleds[target[offsetled] - 1];
-                _b = _spritesleds[target[offsetled] - 1 + 2];
-            }
-#else
             _g = *(poli + 1);
             _r = *(poli);
             _b = *(poli + 2);
-#endif
 
-            /*
-                    secondPixel[pg].bytes[i] = mapg[_g];
-                    secondPixel[pr].bytes[i] = mapr[_r];
-                    secondPixel[pb].bytes[i] = mapb[_b];
-                    if (nbcomponents > 3)
-                        secondPixel[3].bytes[i] = mapw[*(poli + 3)];
-            */
-            // for (int i = 0; i < NUMSTRIPS; i++)
-            //{
 #if NUMBER_OF_BLOCK >= 1
             secondPixel[BA0].bytes[i] = *(poli);
 #endif
@@ -989,75 +706,9 @@ namespace I2SClockBased
             secondPixel[BA3].bytes[i] = p2;
 #endif
 #endif
-#if NUMBER_OF_BLOCK >= 5
-#if DATA_SIZE == 2
-            f = (*((uint16_t *)(poli + 4))) / brightness;
-            p1 = f >> 8;
-            p2 = f & 255;
-            secondPixel[BA4].bytes[i] = p1;
-#endif
-#endif
-#if NUMBER_OF_BLOCK >= 6
-#if DATA_SIZE == 2
-            secondPixel[BA5].bytes[i] = p2;
-#endif
-#endif
-#if NUMBER_OF_BLOCK >= 7
-#if DATA_SIZE == 2
-            f = (*((uint16_t *)(poli + 6))) / brightness;
-            p1 = f >> 8;
-            p2 = f & 255;
-            secondPixel[BA6].bytes[i] = p1;
-#endif
-#endif
-#if NUMBER_OF_BLOCK >= 8
-#if DATA_SIZE == 2
-            secondPixel[BA7].bytes[i] = p2;
-#endif
-#endif
-#if NUMBER_OF_BLOCK >= 9
-            secondPixel[BA8].bytes[i] = *(poli + 8);
-#endif
-#if NUMBER_OF_BLOCK >= 10
-            secondPixel[BA9].bytes[i] = *(poli + 9);
-#endif
-#if NUMBER_OF_BLOCK >= 11
-            secondPixel[BA10].bytes[i] = *(poli + 10);
-#endif
-#if NUMBER_OF_BLOCK >= 12
-            secondPixel[BA11].bytes[i] = *(poli + 11);
-#endif
-#if NUMBER_OF_BLOCK >= 13
-            secondPixel[BA12].bytes[i] = *(poli + 12);
-#endif
-#if NUMBER_OF_BLOCK >= 14
-            secondPixel[BA13].bytes[i] = *(poli + 13);
-#endif
-#if NUMBER_OF_BLOCK >= 15
-            secondPixel[BA14].bytes[i] = *(poli + 14);
-#endif
-#if NUMBER_OF_BLOCK >= 16
-            secondPixel[BA15].bytes[i] = *(poli + 15);
-#endif
-#if NUMBER_OF_BLOCK >= 17
-            secondPixel[BA16].bytes[i] = *(poli + 16);
-#endif
-#if NUMBER_OF_BLOCK >= 18
-            secondPixel[BA17].bytes[i] = *(poli + 17);
-#endif
-#if NUMBER_OF_BLOCK >= 19
-            secondPixel[BA18].bytes[i] = *(poli + 18);
-#endif
-#if NUMBER_OF_BLOCK >= 20
-            secondPixel[BA19].bytes[i] = *(poli + 19);
-#endif
 
             poli += led_per_strip * NUMBER_OF_BLOCK;
 
-            // }
-#if HARDWARESPRITES == 1
-            offsetled += led_per_strip;
-#endif
             Y += deltaY;
 
             if (i % 2 == 0)
@@ -1080,54 +731,6 @@ namespace I2SClockBased
 #endif
 #if NUMBER_OF_BLOCK >= 4
         transpose16x1_noinline2(secondPixel[3].bytes, (uint8_t *)(buffer + 16 * 3));
-#endif
-#if NUMBER_OF_BLOCK >= 5
-        transpose16x1_noinline2(secondPixel[4].bytes, (uint8_t *)(buffer + 16 * 4));
-#endif
-#if NUMBER_OF_BLOCK >= 6
-        transpose16x1_noinline2(secondPixel[5].bytes, (uint8_t *)(buffer + 16 * 5));
-#endif
-#if NUMBER_OF_BLOCK >= 7
-        transpose16x1_noinline2(secondPixel[6].bytes, (uint8_t *)(buffer + 16 * 6));
-#endif
-#if NUMBER_OF_BLOCK >= 8
-        transpose16x1_noinline2(secondPixel[7].bytes, (uint8_t *)(buffer + 16 * 7));
-#endif
-#if NUMBER_OF_BLOCK >= 9
-        transpose16x1_noinline2(secondPixel[8].bytes, (uint8_t *)(buffer + 16 * 8));
-#endif
-#if NUMBER_OF_BLOCK >= 10
-        transpose16x1_noinline2(secondPixel[9].bytes, (uint8_t *)(buffer + 16 * 9));
-#endif
-#if NUMBER_OF_BLOCK >= 11
-        transpose16x1_noinline2(secondPixel[10].bytes, (uint8_t *)(buffer + 16 * 10));
-#endif
-#if NUMBER_OF_BLOCK >= 12
-        transpose16x1_noinline2(secondPixel[11].bytes, (uint8_t *)(buffer + 16 * 11));
-#endif
-#if NUMBER_OF_BLOCK >= 13
-        transpose16x1_noinline2(secondPixel[12].bytes, (uint8_t *)(buffer + 16 * 12));
-#endif
-#if NUMBER_OF_BLOCK >= 14
-        transpose16x1_noinline2(secondPixel[13].bytes, (uint8_t *)(buffer + 16 * 13));
-#endif
-#if NUMBER_OF_BLOCK >= 15
-        transpose16x1_noinline2(secondPixel[14].bytes, (uint8_t *)(buffer + 16 * 14));
-#endif
-#if NUMBER_OF_BLOCK >= 16
-        transpose16x1_noinline2(secondPixel[15].bytes, (uint8_t *)(buffer + 16 * 15));
-#endif
-#if NUMBER_OF_BLOCK >= 17
-        transpose16x1_noinline2(secondPixel[16].bytes, (uint8_t *)(buffer + 16 * 16));
-#endif
-#if NUMBER_OF_BLOCK >= 18
-        transpose16x1_noinline2(secondPixel[17].bytes, (uint8_t *)(buffer + 16 * 17));
-#endif
-#if NUMBER_OF_BLOCK >= 19
-        transpose16x1_noinline2(secondPixel[18].bytes, (uint8_t *)(buffer + 16 * 18));
-#endif
-#if NUMBER_OF_BLOCK >= 20
-        transpose16x1_noinline2(secondPixel[19].bytes, (uint8_t *)(buffer + 16 * 19));
 #endif
     }
 
