@@ -1,14 +1,14 @@
-
+#pragma once
 #ifndef NUMSTRIPS
 #define NUMSTRIPS 16
 #endif
 
 #ifndef SNAKEPATTERN
-#define SNAKEPATTERN 1
+#define SNAKEPATTERN 0
 #endif
 
 #ifndef ALTERNATEPATTERN
-#define ALTERNATEPATTERN 1
+#define ALTERNATEPATTERN 0
 #endif
 
 #define AA (0x00AA00AAL)

@@ -1,5 +1,32 @@
+#pragma once
 #include "I2SLedDriver.h"
 
+#define BA0 0
+#define BA1 3
+#define BA2 2
+#define BA3 1
+#define BA4 0
+#define BA5 0
+#define BA6 0
+#define BA7 0
+#define BA8 0
+#define BA9 0
+#define BA10 0
+#define BA11 0
+#define BA12 0
+#define BA13 0
+#define BA14 0
+#define BA15 0
+#define BA16 0
+#define BA17 0
+#define BA18 0
+#define BA19 0
+
+#define DATA_SIZE 1
+#define BRIGHTNESS 1
+#define NUMBER_OF_BLOCK 4
+#define START_FRAME_SIZE 4
+#define END_FRAME 1
 namespace I2SClockBased
 {
 

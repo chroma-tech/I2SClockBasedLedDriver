@@ -23,7 +23,6 @@
 #include <rom/ets_sys.h>
 #include <math.h>
 
-#include "ledtypes.h"
 #include "ledcommon.h"
 
 #include "I2SClockBasedLedDriver.h"

@@ -1,3 +1,4 @@
+#pragma once
 #include "I2SLedDriver.h"
 
 namespace I2SClockless
@@ -193,12 +194,10 @@ namespace I2SClockless
 
         void initDMABuffers()
         {
-            // was nb_components (change so never have to reallocate)
-            const int components = 4;
-            DMABuffersTampon[0] = allocateDMABuffer(components * 8 * 2 * 3); // the buffers for the
-            DMABuffersTampon[1] = allocateDMABuffer(components * 8 * 2 * 3);
-            DMABuffersTampon[2] = allocateDMABuffer(components * 8 * 2 * 3);
-            DMABuffersTampon[3] = allocateDMABuffer(components * 8 * 2 * 3 * 4);
+            DMABuffersTampon[0] = allocateDMABuffer(nb_components * 8 * 2 * 3); // the buffers for the
+            DMABuffersTampon[1] = allocateDMABuffer(nb_components * 8 * 2 * 3);
+            DMABuffersTampon[2] = allocateDMABuffer(nb_components * 8 * 2 * 3);
+            DMABuffersTampon[3] = allocateDMABuffer(nb_components * 8 * 2 * 3 * 4);
 
             putdefaultones((uint16_t *)DMABuffersTampon[0]->buffer);
             putdefaultones((uint16_t *)DMABuffersTampon[1]->buffer);
