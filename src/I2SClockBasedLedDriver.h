@@ -30,7 +30,6 @@
 namespace I2SClockBased
 {
 
-    static const char *TAG = "I2SClockBasedLedDriver";
     static void IRAM_ATTR _I2SClockBasedLedDriverinterruptHandler(void *arg);
     static void IRAM_ATTR transpose16x1_noinline2(unsigned char *A, uint8_t *B);
     static void IRAM_ATTR loadAndTranspose(uint8_t *ledt, int led_per_strip, int num_stripst, OffsetDisplay offdisp, uint8_t *buffer, int ledtodisp, int pg, int pr, int pb);
@@ -159,7 +158,8 @@ namespace I2SClockBased
             SET_PERI_REG_BITS(I2S_INT_ENA_REG(I2S_DEVICE), I2S_OUT_TOTAL_EOF_INT_ENA_V, 1, I2S_OUT_TOTAL_EOF_INT_ENA_S);
             SET_PERI_REG_BITS(I2S_INT_ENA_REG(I2S_DEVICE), I2S_OUT_TOTAL_EOF_INT_ENA_V, 1, I2S_OUT_TOTAL_EOF_INT_ENA_S);
             */
-            esp_err_t e = esp_intr_alloc(interruptSource, ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LEVEL3 | ESP_INTR_FLAG_IRAM, &_I2SClockBasedLedDriverinterruptHandler, this, &_gI2SClocklessDriver_intr_handle);
+            //esp_err_t e =
+            esp_intr_alloc(interruptSource, ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LEVEL3 | ESP_INTR_FLAG_IRAM, &_I2SClockBasedLedDriverinterruptHandler, this, &_gI2SClocklessDriver_intr_handle);
 
             // -- Create a semaphore to block execution until all the controllers are done
 
@@ -664,8 +664,6 @@ namespace I2SClockBased
     {
         Lines secondPixel[NUMBER_OF_BLOCK];
         // uint8_t *poli=ledt+ledtodisp*NUMBER_OF_BLOCK;
-        uint8_t p2, p1;
-        uint16_t f;
         uint32_t offp, offi, offsetled;
         uint8_t _g, _r, _b;
         int x, y, X, Y, deltaY;
