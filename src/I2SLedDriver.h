@@ -9,6 +9,7 @@
 #include "esp_heap_caps.h"
 #include "soc/soc.h"
 #include "soc/gpio_sig_map.h"
+#include "soc/gpio_periph.h"
 #include "soc/i2s_reg.h"
 #include "soc/i2s_struct.h"
 #include "soc/io_mux_reg.h"
